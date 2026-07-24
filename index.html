@@ -1,0 +1,1617 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Sofá Click — Cotizador</title>
+
+<!-- PWA: instalable en el celular -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B3B45">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sofá Click">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+
+<!-- Librerías para generar PDF y enviar correo -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<style>
+  :root{
+    --azul-profundo:#0B3B45;
+    --teal:#0F5C63;
+    --agua:#6FD6C4;
+    --espuma:#F4FBF9;
+    --tinta:#0A2A2E;
+    --coral:#FF7A59;
+    --linea:#D8ECE7;
+    --sombra: 0 8px 24px rgba(11,59,69,0.10);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--espuma);
+    color: var(--tinta);
+    min-height:100vh;
+    padding-bottom: 40px;
+  }
+
+  /* HERO */
+  .hero{
+    background: linear-gradient(160deg, var(--azul-profundo) 0%, var(--teal) 65%);
+    padding: 28px 20px 40px;
+    border-radius: 0 0 28px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .burbuja{
+    position:absolute;
+    border-radius:50%;
+    background: rgba(255,255,255,0.10);
+    animation: subir 9s infinite ease-in;
+  }
+  @keyframes subir{
+    0%{ transform: translateY(20px) scale(0.8); opacity:0;}
+    15%{opacity:1;}
+    100%{ transform: translateY(-160px) scale(1.1); opacity:0;}
+  }
+  .hero-content{ position:relative; z-index:2; }
+  .marca-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+  }
+  .botones-header{ display:flex; align-items:center; gap:8px; }
+  .btn-historial{
+    display:flex; align-items:center; gap:6px;
+    background: rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25);
+    color:#fff; border-radius:20px; padding:8px 13px; font-size:12.5px; font-weight:700;
+    cursor:pointer; flex-shrink:0;
+  }
+  .btn-historial svg{ flex-shrink:0; }
+  #btnConfiguracion{ padding:8px; }
+  .marca{
+    display:flex; align-items:center; gap:10px;
+    font-weight:800; font-size: 22px; color:#fff; letter-spacing:0.3px;
+  }
+  .marca .punto{ color: var(--agua); font-size:26px; line-height:0;}
+  .tagline{
+    color: rgba(255,255,255,0.78);
+    font-size: 13.5px;
+    margin-top: 6px;
+    font-weight: 500;
+  }
+  .total-flotante{
+    margin-top: 22px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+    backdrop-filter: blur(6px);
+    border-radius: 18px;
+    padding: 16px 18px;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .total-flotante .lbl{ color: rgba(255,255,255,0.75); font-size:12.5px; font-weight:600; text-transform:uppercase; letter-spacing:0.6px;}
+  .total-flotante .num{ color:#fff; font-size: 30px; font-weight:800; margin-top:2px;}
+  .total-flotante .badge{
+    background: var(--agua); color: var(--azul-profundo); font-weight:700; font-size:11.5px;
+    padding: 6px 10px; border-radius:20px;
+  }
+  .nombre-hero{
+    margin-top:12px;
+    background: rgba(255,255,255,0.10);
+    border: 1px solid rgba(255,255,255,0.20);
+    border-radius: 14px;
+    padding: 4px 14px;
+    display:flex; align-items:center; gap:9px;
+  }
+  .nombre-hero-icon{ font-size:11px; opacity:0.75; text-transform:uppercase; letter-spacing:0.6px; font-weight:700; }
+  .nombre-hero input{
+    flex:1; background:transparent; border:none; outline:none;
+    color:#fff; font-size:14.5px; font-weight:600; padding:9px 0;
+    font-family:inherit;
+  }
+  .nombre-hero input::placeholder{ color: rgba(255,255,255,0.55); font-weight:500; }
+
+  /* CONTENIDO */
+  .contenido{ padding: 20px 16px 0; max-width: 480px; margin:0 auto;}
+  .seccion-titulo{
+    font-size: 13px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px;
+    color: var(--teal); margin: 22px 4px 10px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .seccion-titulo::before{
+    content:''; width:6px; height:6px; border-radius:50%; background: var(--coral); display:inline-block;
+  }
+
+  .item{
+    background:#fff;
+    border-radius: 16px;
+    padding: 14px 14px;
+    margin-bottom: 10px;
+    box-shadow: var(--sombra);
+    display:flex; align-items:center; justify-content:space-between;
+    border: 1px solid var(--linea);
+    transition: border-color .15s;
+  }
+  .item.activo{ border-color: var(--agua); }
+  .item-info{ flex:1; min-width:0; }
+  .item-nombre{ font-weight:700; font-size:14.5px; color:var(--tinta);}
+  .item-precio-row{ display:flex; align-items:center; gap:8px; margin-top:2px; }
+  .item-precio{ font-size:12.5px; color:#6B8B87; font-weight:600;}
+  .item-precio.input-activo{ display:none; }
+  .item-precio-input{
+    font-size:12.5px; font-weight:700; color: var(--teal); border:1.5px solid var(--agua);
+    border-radius:8px; padding:2px 6px; width:64px; outline:none; font-family:inherit;
+  }
+  .btn-editar{
+    border:none; background:transparent; color: var(--coral); font-size:11px; font-weight:700;
+    text-decoration: underline; cursor:pointer; padding:0;
+  }
+  .item-sub{ font-size:12.5px; color: var(--coral); font-weight:700; margin-top:3px; min-height:15px;}
+
+  .stepper{ display:flex; align-items:center; gap:0; flex-shrink:0; margin-left:10px;}
+  .stepper button{
+    width:34px; height:34px; border-radius:50%; border:none;
+    background: var(--espuma); color: var(--teal); font-size:19px; font-weight:700;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    transition: background .15s, transform .1s;
+  }
+  .stepper button:active{ transform: scale(0.9); background: var(--linea);}
+  .stepper button.mas{ background: var(--teal); color:#fff;}
+  .stepper button.mas:active{ background: var(--azul-profundo);}
+  .stepper .cant{
+    width: 30px; text-align:center; font-weight:800; font-size:15px; color:var(--tinta);
+  }
+
+  /* CLIENTE */
+  .campo{
+    background:#fff; border-radius:16px; padding: 4px 14px;
+    box-shadow: var(--sombra); border:1px solid var(--linea); margin-bottom:10px;
+  }
+  .campo label{ font-size:11px; font-weight:700; color:#6B8B87; text-transform:uppercase; letter-spacing:0.5px; display:block; padding-top:9px;}
+  .campo input{
+    width:100%; border:none; outline:none; font-size:15px; font-weight:600;
+    color: var(--tinta); padding: 4px 0 10px; background:transparent; font-family:inherit;
+  }
+  .nota-incluido{
+    display:flex; align-items:center; gap:8px;
+    background: #EAF8F3; color: var(--teal); font-size:12.5px; font-weight:600;
+    padding: 10px 14px; border-radius:14px; margin: 4px 0 4px;
+  }
+
+  /* SERVICIOS PERSONALIZADOS */
+  .personalizado-card{
+    background:#fff; border-radius:16px; padding: 14px;
+    box-shadow: var(--sombra); border:1px solid var(--linea); margin-bottom:10px;
+  }
+  .personalizado-fila{ margin-bottom:9px; }
+  .personalizado-fila:last-of-type{ margin-bottom:0; }
+  .personalizado-nombre{
+    width:100%; border:1.5px solid var(--linea); border-radius:12px; padding:10px 12px;
+    font-size:14px; outline:none; font-family:inherit;
+  }
+  .personalizado-nombre:focus{ border-color: var(--agua); }
+  .personalizado-fila-numeros{
+    display:flex; gap:8px; align-items:flex-end;
+  }
+  .personalizado-campo{ flex:1; min-width:0; }
+  .personalizado-campo label{
+    font-size:10.5px; font-weight:700; color:#6B8B87; text-transform:uppercase;
+    letter-spacing:0.4px; display:block; margin-bottom:4px;
+  }
+  .personalizado-campo input{
+    width:100%; border:1.5px solid var(--linea); border-radius:12px; padding:9px 10px;
+    font-size:13.5px; outline:none; font-family:inherit; font-weight:700; color:var(--teal);
+  }
+  .personalizado-campo input:focus{ border-color: var(--agua); }
+  .btn-agregar-personalizado{
+    flex-shrink:0; background: var(--coral); color:#fff; border:none; border-radius:12px;
+    padding: 10px 16px; font-size:13px; font-weight:700; cursor:pointer; height:38px;
+  }
+  .item-personalizado{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    background: var(--espuma); border-radius:12px; padding:9px 12px; margin-top:8px;
+  }
+  .item-personalizado-info{ min-width:0; }
+  .item-personalizado-nombre{ font-weight:700; font-size:13px; color:var(--tinta); }
+  .item-personalizado-detalle{ font-size:11.5px; color:#6B8B87; font-weight:600; margin-top:1px;}
+  .btn-quitar-personalizado{
+    flex-shrink:0; border:none; background:#fff; color: var(--coral); width:26px; height:26px;
+    border-radius:50%; font-size:13px; font-weight:800; cursor:pointer; border:1px solid var(--linea);
+  }
+
+  /* CTA */
+  .cta-wrap{ padding: 22px 4px 6px; }
+  .btn-enviar{
+    width:100%; border:none; border-radius:18px; padding: 17px;
+    background: linear-gradient(135deg, #25D366, #1EBE5A);
+    color:#fff; font-size:16px; font-weight:800;
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    cursor:pointer; box-shadow: 0 10px 22px rgba(37,211,102,0.35);
+    transition: transform .12s;
+  }
+  .btn-enviar:active{ transform: scale(0.98); }
+  .btn-enviar:disabled{ opacity:0.45; box-shadow:none; cursor:not-allowed;}
+  .btn-copiar{
+    width:100%; border:none; border-radius:16px; padding: 13px; margin-top:10px;
+    background: transparent; color: var(--teal); font-size:13.5px; font-weight:700;
+    border: 1.5px dashed var(--agua); cursor:pointer;
+  }
+  .aviso-copiado{
+    text-align:center; font-size:12.5px; color: var(--teal); font-weight:700; margin-top:8px; opacity:0; transition:opacity .2s;
+  }
+  .aviso-copiado.show{ opacity:1; }
+
+  .fila-acciones-doble{
+    display:flex; gap:10px; margin-top:10px;
+  }
+  .btn-secundaria{
+    flex:1; border-radius:16px; padding: 13px; font-size:13.5px; font-weight:700;
+    cursor:pointer; border:1.5px solid var(--linea); background:#fff; color: var(--teal);
+    transition: opacity .15s;
+  }
+  .btn-secundaria:disabled{ opacity:0.45; cursor:not-allowed; }
+  .btn-correo{ border-color: var(--agua); }
+  .aviso-correo{
+    text-align:center; font-size:12.5px; font-weight:700; margin-top:10px; min-height:16px;
+  }
+  .aviso-correo.enviando{ color: var(--teal); }
+  .aviso-correo.exito{ color: var(--teal); }
+  .aviso-correo.error{ color: var(--coral); }
+
+  /* HISTORIAL */
+  .overlay-historial{
+    display:none; position:fixed; inset:0; background: rgba(10,42,46,0.55);
+    z-index:100; align-items:flex-end; justify-content:center;
+  }
+  .overlay-historial.visible{ display:flex; }
+  .panel-historial{
+    background: var(--espuma); width:100%; max-width:520px; max-height:82vh;
+    border-radius: 24px 24px 0 0; padding: 18px 16px 20px; display:flex; flex-direction:column;
+    animation: subirPanel .22s ease-out;
+  }
+  @keyframes subirPanel{
+    from{ transform: translateY(30px); opacity:0.4; }
+    to{ transform: translateY(0); opacity:1; }
+  }
+  .panel-historial-header{
+    display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;
+  }
+  .panel-historial-titulo{ font-size:16.5px; font-weight:800; color: var(--tinta); }
+  .btn-cerrar-historial{
+    border:none; background: var(--linea); color: var(--teal); width:30px; height:30px;
+    border-radius:50%; font-size:14px; cursor:pointer; flex-shrink:0;
+  }
+  .buscador-historial{ margin-bottom:12px; flex-shrink:0; }
+  .buscador-historial input{
+    width:100%; border:1.5px solid var(--linea); border-radius:14px; padding:11px 14px;
+    font-size:14px; outline:none; font-family:inherit; background:#fff;
+  }
+  .buscador-historial input:focus{ border-color: var(--agua); }
+  .lista-historial{ overflow-y:auto; flex:1; -webkit-overflow-scrolling:touch; }
+  .historial-vacio{
+    text-align:center; color:#8FADA8; font-size:13.5px; padding: 30px 10px; font-weight:600;
+  }
+  .item-historial{
+    background:#fff; border-radius:16px; padding:13px 14px; margin-bottom:9px;
+    border:1px solid var(--linea); cursor:pointer;
+  }
+  .item-historial-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
+  .item-historial-nombre{ font-weight:700; font-size:14px; color:var(--tinta); }
+  .item-historial-fecha{ font-size:11px; color:#8FADA8; font-weight:600; margin-top:2px;}
+  .item-historial-total{ font-weight:800; font-size:15px; color: var(--coral); flex-shrink:0; }
+  .item-historial-detalle{ font-size:12px; color:#6B8B87; margin-top:6px; line-height:1.5;}
+  .item-historial-canal{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:10px;
+    margin-top:7px; margin-right:5px;
+  }
+  .canal-whatsapp{ background:#E4F9EC; color:#1EBE5A; }
+  .canal-correo{ background:#EAF3FF; color:#2B6FE0; }
+  .canal-guardado{ background:#F1EEFB; color:#7C5CD6; }
+
+  /* CONFIGURACIÓN */
+  .panel-configuracion{ max-height:none; }
+  .config-seccion{ padding-top:4px; }
+  .config-label{
+    font-size:13.5px; font-weight:700; color:var(--tinta); display:block; margin-bottom:5px;
+  }
+  .config-sub{
+    font-size:12px; color:#6B8B87; font-weight:500; line-height:1.5; margin-bottom:12px;
+  }
+  #configNumeroNegocio{
+    width:100%; border:1.5px solid var(--linea); border-radius:14px; padding:12px 14px;
+    font-size:16px; font-weight:700; color:var(--teal); outline:none; font-family:inherit;
+    margin-bottom:12px;
+  }
+  #configNumeroNegocio:focus{ border-color: var(--agua); }
+  .btn-guardar-config{
+    width:100%; background: var(--teal); color:#fff; border:none; border-radius:14px;
+    padding:13px; font-size:14px; font-weight:700; cursor:pointer;
+  }
+  .aviso-config{
+    text-align:center; font-size:12.5px; font-weight:700; margin-top:10px; min-height:16px;
+    color: var(--teal);
+  }
+
+  .pie{
+    text-align:center; font-size:11.5px; color:#96AFAB; margin-top:26px; padding-bottom:6px;
+  }
+  .pie-credito{
+    font-size:10px; color:#B9CFCB; font-weight:500; margin-top:6px; letter-spacing:0.2px;
+  }
+
+  /* INSTALAR APP */
+  .banner-instalar{
+    display:none;
+    align-items:center; justify-content:space-between; gap:12px;
+    background:#fff; border:1.5px solid var(--agua); border-radius:16px;
+    padding: 12px 14px; margin: 0 16px 14px; box-shadow: var(--sombra);
+    max-width: 480px; margin-left:auto; margin-right:auto;
+  }
+  .banner-instalar.visible{ display:flex; }
+  .banner-instalar-texto{ font-size:13px; font-weight:700; color:var(--tinta); }
+  .banner-instalar-sub{ font-size:11.5px; color:#6B8B87; font-weight:500; margin-top:1px;}
+  .btn-instalar{
+    background: var(--teal); color:#fff; border:none; border-radius:12px;
+    padding: 9px 16px; font-size:13px; font-weight:700; cursor:pointer; flex-shrink:0;
+  }
+
+  /* DESCUENTO */
+  .fila-doble{
+    display:flex; gap:10px; align-items:stretch; margin-bottom:10px;
+  }
+  .fila-doble .descuento-card, .fila-doble .campo-doble{
+    flex: 1 1 0; min-width:0; margin-bottom:0;
+  }
+  .descuento-card{
+    background:#fff; border-radius:16px; padding: 12px;
+    box-shadow: var(--sombra); border:1px solid var(--linea);
+  }
+  .descuento-header{
+    display:flex; align-items:center; justify-content:space-between; gap:6px;
+  }
+  .descuento-titulo{ font-weight:700; font-size:13px; color:var(--tinta); white-space:nowrap;}
+  .toggle-unidad{
+    display:flex; background: var(--espuma); border-radius:10px; padding:3px; gap:2px; flex-shrink:0;
+  }
+  .toggle-unidad button{
+    border:none; background:transparent; padding:5px 10px; border-radius:8px;
+    font-size:12px; font-weight:700; color:#6B8B87; cursor:pointer; transition:all .15s;
+  }
+  .toggle-unidad button.activo{ background: var(--teal); color:#fff; }
+  .descuento-input-wrap{
+    display:flex; align-items:center; gap:8px; margin-top:10px;
+  }
+  .descuento-input-wrap input{
+    width:100%; border:1.5px solid var(--linea); border-radius:12px; outline:none;
+    font-size:15px; font-weight:700; color: var(--coral); padding: 9px 10px;
+    font-family:inherit;
+  }
+  .descuento-input-wrap input:focus{ border-color: var(--agua); }
+  .descuento-linea{
+    display:flex; justify-content:space-between; font-size:12px; font-weight:700;
+    color: var(--coral); margin-top:8px; padding-top:8px; border-top:1px dashed var(--linea);
+  }
+  .campo-doble{
+    display:flex; flex-direction:column; justify-content:center;
+  }
+  .campo-doble input{ font-size:14px; }
+
+  /* IVA */
+  .iva-card{
+    background:#fff; border-radius:16px; padding: 12px 14px;
+    box-shadow: var(--sombra); border:1px solid var(--linea); margin-bottom:10px;
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+  }
+  .iva-titulo{ font-weight:700; font-size:14px; color:var(--tinta); }
+  .iva-sub{ font-size:11.5px; color:#6B8B87; font-weight:500; margin-top:1px;}
+  .switch{ position:relative; display:inline-block; width:46px; height:26px; flex-shrink:0; }
+  .switch input{ opacity:0; width:0; height:0; }
+  .switch-slider{
+    position:absolute; cursor:pointer; inset:0; background:#D8ECE7;
+    border-radius:26px; transition: background .2s;
+  }
+  .switch-slider::before{
+    content:''; position:absolute; height:20px; width:20px; left:3px; bottom:3px;
+    background:#fff; border-radius:50%; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  }
+  .switch input:checked + .switch-slider{ background: var(--teal); }
+  .switch input:checked + .switch-slider::before{ transform: translateX(20px); }
+
+  /* VISTA PREVIA */
+  .preview-card{
+    background: var(--azul-profundo); border-radius:16px; padding: 16px 16px 14px;
+    margin-top: 8px; box-shadow: var(--sombra);
+  }
+  .preview-titulo{
+    color: var(--agua); font-size:11.5px; font-weight:800; text-transform:uppercase;
+    letter-spacing:0.7px; margin-bottom:10px;
+  }
+  .preview-texto{
+    font-family: 'Courier New', monospace; font-size:12.5px; line-height:1.55;
+    color: #E8F5F2; white-space: pre-wrap; word-break: break-word;
+  }
+  .preview-total{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-top:12px; padding-top:12px; border-top: 1px solid rgba(255,255,255,0.15);
+  }
+  .preview-total .lbl{ color: rgba(255,255,255,0.7); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;}
+  .preview-total .num{ color:#fff; font-size:22px; font-weight:800;}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="burbuja" style="width:30px;height:30px; left:10%; bottom:-20px; animation-delay:0s;"></div>
+  <div class="burbuja" style="width:18px;height:18px; left:30%; bottom:-20px; animation-delay:2s;"></div>
+  <div class="burbuja" style="width:44px;height:44px; left:55%; bottom:-20px; animation-delay:4s;"></div>
+  <div class="burbuja" style="width:22px;height:22px; left:75%; bottom:-20px; animation-delay:1s;"></div>
+  <div class="burbuja" style="width:14px;height:14px; left:88%; bottom:-20px; animation-delay:5.5s;"></div>
+
+  <div class="hero-content">
+    <div class="marca-row">
+      <div class="marca">Sofá<span class="punto">•</span>Click</div>
+      <div class="botones-header">
+        <button type="button" class="btn-historial" id="btnConfiguracion" aria-label="Configuración">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+        <button type="button" class="btn-historial" id="btnHistorial" aria-label="Ver historial">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>
+          <span>Historial</span>
+        </button>
+      </div>
+    </div>
+    <div class="tagline">Cotizador rápido — toca, calcula, envía</div>
+
+    <div class="total-flotante">
+      <div>
+        <div class="lbl">Total cotización</div>
+        <div class="num" id="totalNum">$0.00</div>
+      </div>
+      <div class="badge" id="itemsBadge">0 items</div>
+    </div>
+
+    <div class="nombre-hero">
+      <span class="nombre-hero-icon">Cliente</span>
+      <input type="text" id="nombreCliente" placeholder="Nombre del cliente" autocomplete="off">
+    </div>
+  </div>
+</div>
+
+<div class="banner-instalar" id="bannerInstalar">
+  <div>
+    <div class="banner-instalar-texto">Instala Sofá Click en tu celular</div>
+    <div class="banner-instalar-sub">Ábrela como app, sin buscarla en el navegador</div>
+  </div>
+  <button class="btn-instalar" id="btnInstalar">Instalar</button>
+</div>
+
+<div class="contenido">
+
+  <div class="seccion-titulo">Servicios</div>
+
+  <div class="item" data-id="silla-asiento">
+    <div class="item-info">
+      <div class="item-nombre">Silla tapizada — solo asiento</div>
+      <div class="item-precio-row">
+        <span class="item-precio" id="precio-silla-asiento">$2.50 c/u</span>
+        <button type="button" class="btn-editar" data-id="silla-asiento">editar</button>
+      </div>
+      <div class="item-sub"></div>
+    </div>
+    <div class="stepper">
+      <button class="menos">−</button>
+      <div class="cant">0</div>
+      <button class="mas">+</button>
+    </div>
+  </div>
+
+  <div class="item" data-id="silla-completa">
+    <div class="item-info">
+      <div class="item-nombre">Silla tapizada — asiento y espalda</div>
+      <div class="item-precio-row">
+        <span class="item-precio" id="precio-silla-completa">$3.50 c/u</span>
+        <button type="button" class="btn-editar" data-id="silla-completa">editar</button>
+      </div>
+      <div class="item-sub"></div>
+    </div>
+    <div class="stepper">
+      <button class="menos">−</button>
+      <div class="cant">0</div>
+      <button class="mas">+</button>
+    </div>
+  </div>
+
+  <div class="item" data-id="sofa">
+    <div class="item-info">
+      <div class="item-nombre">Sofá</div>
+      <div class="item-precio-row">
+        <span class="item-precio" id="precio-sofa">$7.00 por puesto</span>
+        <button type="button" class="btn-editar" data-id="sofa">editar</button>
+      </div>
+      <div class="item-sub"></div>
+    </div>
+    <div class="stepper">
+      <button class="menos">−</button>
+      <div class="cant">0</div>
+      <button class="mas">+</button>
+    </div>
+  </div>
+
+  <div class="item" data-id="colchon">
+    <div class="item-info">
+      <div class="item-nombre">Colchón</div>
+      <div class="item-precio-row">
+        <span class="item-precio" id="precio-colchon">$12.50 por plaza</span>
+        <button type="button" class="btn-editar" data-id="colchon">editar</button>
+      </div>
+      <div class="item-sub"></div>
+    </div>
+    <div class="stepper">
+      <button class="menos">−</button>
+      <div class="cant">0</div>
+      <button class="mas">+</button>
+    </div>
+  </div>
+
+  <div class="item" data-id="alfombra">
+    <div class="item-info">
+      <div class="item-nombre">Alfombra</div>
+      <div class="item-precio-row">
+        <span class="item-precio" id="precio-alfombra">$2.25 por m²</span>
+        <button type="button" class="btn-editar" data-id="alfombra">editar</button>
+      </div>
+      <div class="item-sub"></div>
+    </div>
+    <div class="stepper">
+      <button class="menos">−</button>
+      <div class="cant">0</div>
+      <button class="mas">+</button>
+    </div>
+  </div>
+
+  <div class="nota-incluido">Desmanchado incluido sin costo adicional en todos los servicios</div>
+
+  <div class="seccion-titulo">Servicios adicionales</div>
+
+  <div class="personalizado-card">
+    <div class="personalizado-fila">
+      <input type="text" id="personalizadoNombre" placeholder="Ej. Limpieza de vidrios" class="personalizado-nombre">
+    </div>
+    <div class="personalizado-fila personalizado-fila-numeros">
+      <div class="personalizado-campo">
+        <label>Cantidad</label>
+        <input type="number" id="personalizadoCantidad" value="1" min="1" step="1" inputmode="numeric">
+      </div>
+      <div class="personalizado-campo">
+        <label>Precio unitario</label>
+        <input type="number" id="personalizadoPrecio" placeholder="0.00" min="0" step="0.01" inputmode="decimal">
+      </div>
+      <button type="button" id="btnAgregarPersonalizado" class="btn-agregar-personalizado">Agregar</button>
+    </div>
+    <div id="listaPersonalizados"></div>
+  </div>
+
+  <div class="seccion-titulo">Descuento y contacto</div>
+
+  <div class="fila-doble">
+    <div class="descuento-card">
+      <div class="descuento-header">
+        <div class="descuento-titulo">Descuento</div>
+        <div class="toggle-unidad">
+          <button type="button" id="btnPorcentaje" class="activo">%</button>
+          <button type="button" id="btnFijo">$</button>
+        </div>
+      </div>
+      <div class="descuento-input-wrap">
+        <input type="number" id="descuentoValor" placeholder="0" min="0" step="0.01" inputmode="decimal">
+      </div>
+      <div class="descuento-linea" id="descuentoLinea" style="display:none;">
+        <span>Aplicado</span>
+        <span id="descuentoMonto">-$0.00</span>
+      </div>
+    </div>
+
+    <div class="campo campo-doble">
+      <label>WhatsApp del cliente</label>
+      <input type="tel" id="telCliente" placeholder="0991234567" autocomplete="off" maxlength="10">
+    </div>
+  </div>
+
+  <div class="iva-card">
+    <div class="iva-info">
+      <div class="iva-titulo">IVA (15%)</div>
+      <div class="iva-sub" id="ivaMonto">Impuesto al Valor Agregado — Ecuador</div>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="incluirIva" checked>
+      <span class="switch-slider"></span>
+    </label>
+  </div>
+
+  <div class="campo">
+    <label>Correo del cliente (para enviar PDF)</label>
+    <input type="email" id="emailCliente" placeholder="cliente@correo.com" autocomplete="off">
+  </div>
+
+  <div class="campo">
+    <label>Empresa / Local (opcional)</label>
+    <input type="text" id="empresaCliente" placeholder="Ej. Chilcabamba Lodge" autocomplete="off">
+  </div>
+
+  <div class="seccion-titulo">Vista previa</div>
+
+  <div class="preview-card">
+    <div class="preview-titulo">Mensaje que se enviará</div>
+    <div class="preview-texto" id="previewTexto">Agrega productos para ver la cotización aquí.</div>
+    <div class="preview-total">
+      <span class="lbl">Total a enviar</span>
+      <span class="num" id="previewTotalNum">$0.00</span>
+    </div>
+  </div>
+
+  <div class="cta-wrap">
+    <button class="btn-enviar" id="btnEnviar" disabled>
+      Enviar cotización por WhatsApp
+    </button>
+
+    <div class="fila-acciones-doble">
+      <button class="btn-secundaria" id="btnDescargarPdf" disabled>Descargar PDF</button>
+      <button class="btn-secundaria btn-correo" id="btnEnviarCorreo" disabled>Enviar por correo</button>
+    </div>
+
+    <button class="btn-copiar" id="btnCopiar">Copiar texto de la cotización</button>
+    <div class="aviso-copiado" id="avisoCopiado">Copiado al portapapeles</div>
+    <div class="aviso-correo" id="avisoCorreo"></div>
+  </div>
+
+  <div class="pie">
+    Sofá Click · 0992002214
+    <div class="pie-credito">Hecho por Christian Sosa © Todos los derechos reservados</div>
+  </div>
+</div>
+
+<!-- PANEL DE HISTORIAL -->
+<div class="overlay-historial" id="overlayHistorial">
+  <div class="panel-historial">
+    <div class="panel-historial-header">
+      <div class="panel-historial-titulo">Historial de proformas</div>
+      <button type="button" class="btn-cerrar-historial" id="btnCerrarHistorial">✕</button>
+    </div>
+    <div class="buscador-historial">
+      <input type="text" id="buscarHistorial" placeholder="Buscar por nombre de cliente...">
+    </div>
+    <div class="lista-historial" id="listaHistorial">
+      <div class="historial-vacio">Todavía no has enviado ninguna proforma.</div>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL DE CONFIGURACIÓN -->
+<div class="overlay-historial" id="overlayConfiguracion">
+  <div class="panel-historial panel-configuracion">
+    <div class="panel-historial-header">
+      <div class="panel-historial-titulo">Configuración</div>
+      <button type="button" class="btn-cerrar-historial" id="btnCerrarConfiguracion">✕</button>
+    </div>
+
+    <div class="config-seccion">
+      <label class="config-label">Número interno de este celular</label>
+      <div class="config-sub">Uso interno únicamente. No se muestra al cliente ni aparece en el PDF o el correo — la marca siempre muestra 0992002214. Este número solo se usa como destino de respaldo cuando el cliente no deja su propio WhatsApp registrado.</div>
+      <input type="tel" id="configNumeroNegocio" placeholder="0991234567" maxlength="10" inputmode="numeric">
+      <button type="button" id="btnGuardarConfiguracion" class="btn-guardar-config">Guardar número</button>
+      <div class="aviso-config" id="avisoConfig"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const PRECIOS = {
+    'silla-asiento': { nombre: 'Silla (solo asiento)', precio: 2.50, unidad: '', sufijoPrecio: 'c/u', unidadMedida: 'unidad' },
+    'silla-completa': { nombre: 'Silla (asiento y espalda)', precio: 3.50, unidad: '', sufijoPrecio: 'c/u', unidadMedida: 'unidad' },
+    'sofa': { nombre: 'Sofá', precio: 7.00, unidad: 'puesto(s)', sufijoPrecio: 'por puesto', unidadMedida: 'puesto' },
+    'colchon': { nombre: 'Colchón', precio: 12.50, unidad: 'plaza(s)', sufijoPrecio: 'por plaza', unidadMedida: 'plaza' },
+    'alfombra': { nombre: 'Alfombra', precio: 2.25, unidad: 'm²', sufijoPrecio: 'por m²', unidadMedida: 'm²' }
+  };
+
+  const NUMERO_NEGOCIO_DEFECTO = '0992002214'; // se usa solo si el celular no tiene número propio configurado
+  const LS_KEY_NUMERO_NEGOCIO = 'sofaclick_numero_negocio_v1';
+  const LS_KEY_PRECIOS = 'sofaclick_precios_v1';
+  const LS_KEY_HISTORIAL = 'sofaclick_historial_v1';
+  const LS_KEY_NUMERO_PROFORMA = 'sofaclick_numero_proforma_v1';
+
+  function obtenerNumeroNegocioLocal(){
+    const guardado = localStorage.getItem(LS_KEY_NUMERO_NEGOCIO);
+    return guardado || NUMERO_NEGOCIO_DEFECTO;
+  }
+
+  function numeroALinkInternacional(numeroLocal){
+    if (numeroLocal.length === 10 && numeroLocal.startsWith('0')){
+      return '593' + numeroLocal.substring(1);
+    }
+    return numeroLocal;
+  }
+
+  function generarNumeroProforma(){
+    let actual = parseInt(localStorage.getItem(LS_KEY_NUMERO_PROFORMA), 10);
+    if (isNaN(actual)) actual = 0;
+    const siguiente = actual + 1;
+    localStorage.setItem(LS_KEY_NUMERO_PROFORMA, String(siguiente));
+    return siguiente;
+  }
+
+  const EMAILJS_PUBLIC_KEY = '5fVPp7QjDiESoAesX';
+  const EMAILJS_SERVICE_ID = 'service_dh6zaje';
+  const EMAILJS_TEMPLATE_ID = 'template_x1labi4';
+
+  if (window.emailjs){
+    emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+  }
+
+  function cargarPreciosGuardados(){
+    try{
+      const guardado = localStorage.getItem(LS_KEY_PRECIOS);
+      if (!guardado) return;
+      const data = JSON.parse(guardado);
+      Object.keys(data).forEach(id => {
+        if (PRECIOS[id] && typeof data[id] === 'number' && data[id] >= 0){
+          PRECIOS[id].precio = data[id];
+        }
+      });
+    } catch(e){
+      console.error('No se pudieron cargar los precios guardados', e);
+    }
+  }
+
+  function guardarPreciosLocal(){
+    try{
+      const data = {};
+      Object.keys(PRECIOS).forEach(id => { data[id] = PRECIOS[id].precio; });
+      localStorage.setItem(LS_KEY_PRECIOS, JSON.stringify(data));
+    } catch(e){
+      console.error('No se pudieron guardar los precios', e);
+    }
+  }
+
+  function refrescarTextosPrecios(){
+    Object.keys(PRECIOS).forEach(id => {
+      const span = document.getElementById(`precio-${id}`);
+      if (span) span.textContent = `$${PRECIOS[id].precio.toFixed(2)} ${PRECIOS[id].sufijoPrecio}`;
+    });
+  }
+
+  cargarPreciosGuardados();
+
+  const cantidades = {};
+  Object.keys(PRECIOS).forEach(id => cantidades[id] = 0);
+
+  let itemsPersonalizados = []; // { id, nombre, cantidad, precioUnit }
+
+  let tipoDescuento = 'porcentaje'; // 'porcentaje' | 'fijo'
+
+  const totalNum = document.getElementById('totalNum');
+  const itemsBadge = document.getElementById('itemsBadge');
+  const btnEnviar = document.getElementById('btnEnviar');
+  const descuentoValorInput = document.getElementById('descuentoValor');
+  const descuentoLinea = document.getElementById('descuentoLinea');
+  const descuentoMonto = document.getElementById('descuentoMonto');
+  const btnPorcentaje = document.getElementById('btnPorcentaje');
+  const btnFijo = document.getElementById('btnFijo');
+  const btnDescargarPdf = document.getElementById('btnDescargarPdf');
+  const btnEnviarCorreo = document.getElementById('btnEnviarCorreo');
+  const avisoCorreo = document.getElementById('avisoCorreo');
+  const incluirIvaInput = document.getElementById('incluirIva');
+  const ivaMontoTexto = document.getElementById('ivaMonto');
+  const IVA_PORCENTAJE = 15;
+
+  function calcularSubtotal(){
+    let subtotal = 0;
+    let items = 0;
+    Object.keys(PRECIOS).forEach(id => {
+      const cant = cantidades[id];
+      const sub = cant * PRECIOS[id].precio;
+      subtotal += sub;
+      items += cant;
+
+      const el = document.querySelector(`.item[data-id="${id}"]`);
+      el.querySelector('.cant').textContent = cant;
+      const subEl = el.querySelector('.item-sub');
+      subEl.textContent = cant > 0 ? `Subtotal: $${sub.toFixed(2)}` : '';
+      el.classList.toggle('activo', cant > 0);
+    });
+    itemsPersonalizados.forEach(item => {
+      subtotal += item.cantidad * item.precioUnit;
+      items += item.cantidad;
+    });
+    return { subtotal, items };
+  }
+
+  function calcularDescuento(subtotal){
+    const valor = parseFloat(descuentoValorInput.value) || 0;
+    if (valor <= 0) return 0;
+    if (tipoDescuento === 'porcentaje'){
+      const pct = Math.min(valor, 100);
+      return subtotal * (pct / 100);
+    }
+    return Math.min(valor, subtotal);
+  }
+
+  function calcularTotal(){
+    const { subtotal, items } = calcularSubtotal();
+    const descuento = calcularDescuento(subtotal);
+    const base = Math.max(0, subtotal - descuento);
+    const incluyeIva = incluirIvaInput.checked;
+    const iva = incluyeIva ? base * (IVA_PORCENTAJE / 100) : 0;
+    const total = base + iva;
+
+    if (descuento > 0){
+      descuentoLinea.style.display = 'flex';
+      descuentoMonto.textContent = `-$${descuento.toFixed(2)}`;
+    } else {
+      descuentoLinea.style.display = 'none';
+    }
+
+    ivaMontoTexto.textContent = incluyeIva && base > 0
+      ? `Se suma $${iva.toFixed(2)} al total`
+      : 'Impuesto al Valor Agregado — Ecuador';
+
+    totalNum.textContent = `$${total.toFixed(2)}`;
+    itemsBadge.textContent = `${items} item${items === 1 ? '' : 's'}`;
+    btnEnviar.disabled = subtotal === 0;
+    btnDescargarPdf.disabled = subtotal === 0;
+    btnEnviarCorreo.disabled = subtotal === 0;
+    actualizarPreview(subtotal, total);
+    return { subtotal, descuento, base, iva, incluyeIva, total };
+  }
+
+  function actualizarPreview(subtotal, total){
+    const previewTexto = document.getElementById('previewTexto');
+    const previewTotalNum = document.getElementById('previewTotalNum');
+    if (subtotal === 0){
+      previewTexto.textContent = 'Agrega productos para ver la cotización aquí.';
+      previewTotalNum.textContent = '$0.00';
+      return;
+    }
+    previewTexto.textContent = construirMensaje();
+    previewTotalNum.textContent = `$${total.toFixed(2)}`;
+  }
+
+  btnPorcentaje.addEventListener('click', () => {
+    tipoDescuento = 'porcentaje';
+    btnPorcentaje.classList.add('activo');
+    btnFijo.classList.remove('activo');
+    descuentoValorInput.placeholder = '0';
+    calcularTotal();
+  });
+  btnFijo.addEventListener('click', () => {
+    tipoDescuento = 'fijo';
+    btnFijo.classList.add('activo');
+    btnPorcentaje.classList.remove('activo');
+    descuentoValorInput.placeholder = '0.00';
+    calcularTotal();
+  });
+  descuentoValorInput.addEventListener('input', calcularTotal);
+  incluirIvaInput.addEventListener('change', calcularTotal);
+  document.getElementById('nombreCliente').addEventListener('input', () => calcularTotal());
+
+  document.querySelectorAll('.btn-editar').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const span = document.getElementById(`precio-${id}`);
+      if (span.classList.contains('input-activo')) return;
+
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.min = '0';
+      input.step = '0.01';
+      input.inputMode = 'decimal';
+      input.className = 'item-precio-input';
+      input.value = PRECIOS[id].precio.toFixed(2);
+
+      span.classList.add('input-activo');
+      span.insertAdjacentElement('afterend', input);
+      input.focus();
+      input.select();
+
+      function guardar(){
+        const nuevo = parseFloat(input.value);
+        if (!isNaN(nuevo) && nuevo >= 0){
+          PRECIOS[id].precio = nuevo;
+          guardarPreciosLocal();
+        }
+        span.textContent = `$${PRECIOS[id].precio.toFixed(2)} ${PRECIOS[id].sufijoPrecio}`;
+        span.classList.remove('input-activo');
+        input.remove();
+        calcularTotal();
+      }
+
+      input.addEventListener('blur', guardar);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter'){ input.blur(); }
+      });
+    });
+  });
+
+  document.querySelectorAll('.item').forEach(item => {
+    const id = item.dataset.id;
+    item.querySelector('.menos').addEventListener('click', () => {
+      cantidades[id] = Math.max(0, cantidades[id] - 1);
+      calcularTotal();
+    });
+    item.querySelector('.mas').addEventListener('click', () => {
+      cantidades[id] = cantidades[id] + 1;
+      calcularTotal();
+    });
+  });
+
+  // ===== SERVICIOS PERSONALIZADOS =====
+  function renderPersonalizados(){
+    const cont = document.getElementById('listaPersonalizados');
+    if (itemsPersonalizados.length === 0){
+      cont.innerHTML = '';
+      return;
+    }
+    cont.innerHTML = itemsPersonalizados.map(item => `
+      <div class="item-personalizado" data-id="${item.id}">
+        <div class="item-personalizado-info">
+          <div class="item-personalizado-nombre">${item.nombre}</div>
+          <div class="item-personalizado-detalle">x${item.cantidad} · $${item.precioUnit.toFixed(2)} c/u · Subtotal $${(item.cantidad * item.precioUnit).toFixed(2)}</div>
+        </div>
+        <button type="button" class="btn-quitar-personalizado" data-quitar="${item.id}">✕</button>
+      </div>
+    `).join('');
+
+    cont.querySelectorAll('[data-quitar]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        itemsPersonalizados = itemsPersonalizados.filter(it => it.id !== btn.dataset.quitar);
+        renderPersonalizados();
+        calcularTotal();
+      });
+    });
+  }
+
+  document.getElementById('btnAgregarPersonalizado').addEventListener('click', () => {
+    const nombreInput = document.getElementById('personalizadoNombre');
+    const cantidadInput = document.getElementById('personalizadoCantidad');
+    const precioInput = document.getElementById('personalizadoPrecio');
+
+    const nombre = nombreInput.value.trim();
+    const cantidad = parseInt(cantidadInput.value, 10) || 1;
+    const precio = parseFloat(precioInput.value);
+
+    if (!nombre){
+      nombreInput.focus();
+      return;
+    }
+    if (isNaN(precio) || precio <= 0){
+      precioInput.focus();
+      return;
+    }
+
+    itemsPersonalizados.push({
+      id: 'custom-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+      nombre, cantidad, precioUnit: precio
+    });
+
+    nombreInput.value = '';
+    cantidadInput.value = '1';
+    precioInput.value = '';
+    nombreInput.focus();
+
+    renderPersonalizados();
+    calcularTotal();
+  });
+
+  function construirMensaje(numero){
+    const nombre = document.getElementById('nombreCliente').value.trim();
+    const empresa = document.getElementById('empresaCliente').value.trim();
+    let lineas = [];
+    lineas.push('*SOFÁ CLICK — Cotización*');
+    if (numero) lineas.push(`N.º de Proforma: ${String(numero).padStart(3, '0')}`);
+    if (nombre) lineas.push(`Atención: ${nombre}`);
+    if (empresa) lineas.push(`Empresa: ${empresa}`);
+    lineas.push('───────────────────');
+
+    let subtotal = 0;
+    Object.keys(PRECIOS).forEach(id => {
+      const cant = cantidades[id];
+      if (cant > 0){
+        const p = PRECIOS[id];
+        const sub = cant * p.precio;
+        subtotal += sub;
+        const detalleCant = p.unidad ? `${cant} ${p.unidad}` : `x${cant}`;
+        lineas.push(`${p.nombre} — ${detalleCant} = $${sub.toFixed(2)}`);
+      }
+    });
+    itemsPersonalizados.forEach(item => {
+      const sub = item.cantidad * item.precioUnit;
+      subtotal += sub;
+      lineas.push(`${item.nombre} — x${item.cantidad} = $${sub.toFixed(2)}`);
+    });
+
+    const descuento = calcularDescuento(subtotal);
+    const base = Math.max(0, subtotal - descuento);
+    const incluyeIva = incluirIvaInput.checked;
+    const iva = incluyeIva ? base * (IVA_PORCENTAJE / 100) : 0;
+    const total = base + iva;
+
+    lineas.push('───────────────────');
+    if (descuento > 0){
+      lineas.push(`Subtotal: $${subtotal.toFixed(2)}`);
+      const etiquetaDesc = tipoDescuento === 'porcentaje'
+        ? `Descuento (${parseFloat(descuentoValorInput.value)}%)`
+        : 'Descuento';
+      lineas.push(`${etiquetaDesc}: -$${descuento.toFixed(2)}`);
+    }
+    if (incluyeIva){
+      lineas.push(`IVA (${IVA_PORCENTAJE}%): $${iva.toFixed(2)}`);
+    }
+    lineas.push(`*TOTAL: $${total.toFixed(2)}*`);
+    lineas.push('Incluye desmanchado sin costo adicional');
+    lineas.push('');
+    lineas.push('¡Gracias por confiar en Sofá Click!');
+
+    return lineas.join('\n');
+  }
+
+  function obtenerDatosProforma(){
+    const nombre = document.getElementById('nombreCliente').value.trim();
+    const telefono = document.getElementById('telCliente').value.trim();
+    const email = document.getElementById('emailCliente').value.trim();
+    const empresa = document.getElementById('empresaCliente').value.trim();
+
+    const items = [];
+    let subtotal = 0;
+    Object.keys(PRECIOS).forEach(id => {
+      const cant = cantidades[id];
+      if (cant > 0){
+        const p = PRECIOS[id];
+        const sub = cant * p.precio;
+        subtotal += sub;
+        items.push({
+          id, nombre: p.nombre, cantidad: cant,
+          unidad: p.unidad, unidadMedida: p.unidadMedida, precioUnit: p.precio, subtotal: sub
+        });
+      }
+    });
+    itemsPersonalizados.forEach(item => {
+      const sub = item.cantidad * item.precioUnit;
+      subtotal += sub;
+      items.push({
+        id: item.id, nombre: item.nombre, cantidad: item.cantidad,
+        unidad: '', unidadMedida: 'unidad', precioUnit: item.precioUnit, subtotal: sub, personalizado: true
+      });
+    });
+
+    const descuento = calcularDescuento(subtotal);
+    const base = Math.max(0, subtotal - descuento);
+    const incluyeIva = incluirIvaInput.checked;
+    const iva = incluyeIva ? base * (IVA_PORCENTAJE / 100) : 0;
+    const total = base + iva;
+    const valorDescuentoInput = parseFloat(descuentoValorInput.value) || 0;
+
+    return {
+      nombre, telefono, email, empresa, items, subtotal, descuento, base, iva, incluyeIva, total,
+      tipoDescuento, valorDescuentoInput,
+      fecha: new Date()
+    };
+  }
+
+  function formatearFecha(fecha){
+    const d = new Date(fecha);
+    return d.toLocaleDateString('es-EC', { day:'2-digit', month:'short', year:'numeric' }) +
+      ' · ' + d.toLocaleTimeString('es-EC', { hour:'2-digit', minute:'2-digit' });
+  }
+  function generarDocumentoPDF(datos){
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const anchoPagina = 210;
+    const margen = 18;
+    let y = 20;
+
+    // Encabezado
+    doc.setFillColor(11, 59, 69);
+    doc.rect(0, 0, anchoPagina, 32, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.text('SOFÁ CLICK', margen, 16);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text('Lavado de muebles y sillas · WhatsApp 0992002214', margen, 23);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text('N.º DE PROFORMA', anchoPagina - margen, 14, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(12);
+    doc.text(String(datos.numero).padStart(3, '0'), anchoPagina - margen, 20, { align: 'right' });
+    doc.setFontSize(8.5);
+    doc.text(formatearFecha(datos.fecha), anchoPagina - margen, 26, { align: 'right' });
+
+    y = 42;
+    doc.setTextColor(10, 42, 46);
+
+    // Frase introductoria
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10.5);
+    doc.text('Por medio de la presente informamos el valor de los servicios solicitados:', margen, y);
+    y += 10;
+
+    // Datos del cliente
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    if (datos.nombre){
+      doc.text(`Atención: ${datos.nombre}`, margen, y);
+      y += 5.5;
+    }
+    if (datos.empresa){
+      doc.setFont('helvetica', 'bold');
+      doc.text(datos.empresa, margen, y);
+      doc.setFont('helvetica', 'normal');
+      y += 5.5;
+    }
+    if (!datos.nombre && !datos.empresa){
+      doc.text('Cliente sin nombre registrado', margen, y);
+      y += 5.5;
+    }
+    if (datos.telefono){ doc.text(`WhatsApp: ${datos.telefono}`, margen, y); y += 5.5; }
+    if (datos.email){ doc.text(`Correo: ${datos.email}`, margen, y); y += 5.5; }
+
+    y += 6;
+
+    // Tabla de items - encabezado (5 columnas: Descripción, P.Unit, Cant, Unidad, Total)
+    const colDescripcion = margen + 2;
+    const colPUnit = 96;
+    const colCant = 122;
+    const colUnidad = 142;
+    const colTotal = anchoPagina - margen - 2;
+
+    doc.setFillColor(244, 251, 249);
+    doc.rect(margen, y, anchoPagina - margen * 2, 8, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text('Descripción', colDescripcion, y + 5.5);
+    doc.text('P. Unit.', colPUnit, y + 5.5);
+    doc.text('Cant.', colCant, y + 5.5);
+    doc.text('Unidad', colUnidad, y + 5.5);
+    doc.text('Total', colTotal, y + 5.5, { align: 'right' });
+    y += 8;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    datos.items.forEach((item, idx) => {
+      const alturaFila = 7.5;
+      if (idx % 2 === 1){
+        doc.setFillColor(250, 253, 252);
+        doc.rect(margen, y, anchoPagina - margen * 2, alturaFila, 'F');
+      }
+      doc.text(item.nombre, colDescripcion, y + 5, { maxWidth: colPUnit - colDescripcion - 3 });
+      doc.text(`$${item.precioUnit.toFixed(2)}`, colPUnit, y + 5);
+      doc.text(`${item.cantidad}`, colCant, y + 5);
+      doc.text(item.unidadMedida || 'unidad', colUnidad, y + 5);
+      doc.text(`$${item.subtotal.toFixed(2)}`, colTotal, y + 5, { align: 'right' });
+      y += alturaFila;
+    });
+
+    y += 4;
+    doc.setDrawColor(216, 236, 231);
+    doc.line(margen, y, anchoPagina - margen, y);
+    y += 8;
+
+    // Totales
+    doc.setFontSize(10);
+    doc.text('Subtotal', 140, y);
+    doc.text(`$${datos.subtotal.toFixed(2)}`, anchoPagina - margen - 2, y, { align: 'right' });
+
+    if (datos.descuento > 0){
+      y += 6.5;
+      const etiqueta = datos.tipoDescuento === 'porcentaje'
+        ? `Descuento (${datos.valorDescuentoInput}%)`
+        : 'Descuento';
+      doc.setTextColor(255, 122, 89);
+      doc.text(etiqueta, 140, y);
+      doc.text(`-$${datos.descuento.toFixed(2)}`, anchoPagina - margen - 2, y, { align: 'right' });
+      doc.setTextColor(10, 42, 46);
+    }
+
+    if (datos.incluyeIva){
+      y += 6.5;
+      doc.text(`IVA (${IVA_PORCENTAJE}%)`, 140, y);
+      doc.text(`$${datos.iva.toFixed(2)}`, anchoPagina - margen - 2, y, { align: 'right' });
+    }
+
+    y += 9;
+    doc.setFillColor(15, 92, 99);
+    doc.rect(120, y - 6, anchoPagina - margen - 120, 11, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('TOTAL', 123, y + 1.5);
+    doc.text(`$${datos.total.toFixed(2)}`, anchoPagina - margen - 2, y + 1.5, { align: 'right' });
+
+    y += 18;
+    doc.setTextColor(107, 139, 135);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text('Incluye desmanchado sin costo adicional en todos los servicios.', margen, y);
+    y += 5;
+    doc.text('Proforma válida por 8 días. Precios en dólares americanos.', margen, y);
+
+    doc.setFontSize(8);
+    doc.setTextColor(160, 190, 185);
+    doc.text('Sofá Click · 0992002214', margen, 287);
+
+    return doc;
+  }
+
+  document.getElementById('btnEnviar').addEventListener('click', () => {
+    const numero = generarNumeroProforma();
+    const mensaje = construirMensaje(numero);
+    const telInput = document.getElementById('telCliente').value.trim();
+    let numeroDestino = numeroALinkInternacional(obtenerNumeroNegocioLocal());
+
+    if (telInput.length === 10 && telInput.startsWith('0')){
+      numeroDestino = numeroALinkInternacional(telInput);
+    }
+
+    const url = `https://wa.me/${numeroDestino}?text=${encodeURIComponent(mensaje)}`;
+    window.open(url, '_blank');
+    const datos = obtenerDatosProforma();
+    datos.numero = numero;
+    guardarProformaHistorial('whatsapp', datos);
+  });
+
+  document.getElementById('btnCopiar').addEventListener('click', () => {
+    const mensaje = construirMensaje();
+    navigator.clipboard.writeText(mensaje).then(() => {
+      const aviso = document.getElementById('avisoCopiado');
+      aviso.classList.add('show');
+      setTimeout(() => aviso.classList.remove('show'), 1800);
+    });
+  });
+
+  // ===== DESCARGAR PDF =====
+  btnDescargarPdf.addEventListener('click', () => {
+    const datos = obtenerDatosProforma();
+    if (datos.items.length === 0) return;
+    datos.numero = generarNumeroProforma();
+    const doc = generarDocumentoPDF(datos);
+    const nombreArchivo = `proforma-${String(datos.numero).padStart(3, '0')}-${(datos.nombre || 'cliente').replace(/\s+/g, '-').toLowerCase()}.pdf`;
+    doc.save(nombreArchivo);
+    guardarProformaHistorial('pdf', datos);
+  });
+
+  // ===== ENVIAR POR CORREO =====
+  function validarEmail(email){
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  function construirDetalleHtml(datos){
+    let filas = datos.items.map(item => {
+      return `<tr>
+        <td style="padding:8px 6px;border-bottom:1px solid #E5EFEC;font-size:13px;color:#0A2A2E;">${item.nombre}</td>
+        <td style="padding:8px 6px;border-bottom:1px solid #E5EFEC;font-size:13px;color:#0A2A2E;text-align:right;">$${item.precioUnit.toFixed(2)}</td>
+        <td style="padding:8px 6px;border-bottom:1px solid #E5EFEC;font-size:13px;color:#0A2A2E;text-align:center;">${item.cantidad}</td>
+        <td style="padding:8px 6px;border-bottom:1px solid #E5EFEC;font-size:13px;color:#0A2A2E;text-align:center;">${item.unidadMedida || 'unidad'}</td>
+        <td style="padding:8px 6px;border-bottom:1px solid #E5EFEC;font-size:13px;color:#0A2A2E;text-align:right;">$${item.subtotal.toFixed(2)}</td>
+      </tr>`;
+    }).join('');
+
+    let filaDescuento = '';
+    if (datos.descuento > 0){
+      const etiqueta = datos.tipoDescuento === 'porcentaje'
+        ? `Descuento (${datos.valorDescuentoInput}%)`
+        : 'Descuento';
+      filaDescuento = `<tr>
+        <td colspan="4" style="padding:6px;font-size:13px;color:#FF7A59;text-align:right;">${etiqueta}</td>
+        <td style="padding:6px;font-size:13px;color:#FF7A59;text-align:right;">-$${datos.descuento.toFixed(2)}</td>
+      </tr>`;
+    }
+
+    let filaIva = '';
+    if (datos.incluyeIva){
+      filaIva = `<tr>
+        <td colspan="4" style="padding:6px;font-size:13px;color:#0A2A2E;text-align:right;">IVA (${IVA_PORCENTAJE}%)</td>
+        <td style="padding:6px;font-size:13px;color:#0A2A2E;text-align:right;">$${datos.iva.toFixed(2)}</td>
+      </tr>`;
+    }
+
+    let bloqueCliente = '';
+    if (datos.nombre) bloqueCliente += `<div style="font-size:13px;color:#0A2A2E;">Atención: ${datos.nombre}</div>`;
+    if (datos.empresa) bloqueCliente += `<div style="font-size:13px;color:#0A2A2E;font-weight:bold;">${datos.empresa}</div>`;
+
+    return `
+      <div style="font-family:Arial,sans-serif;margin-bottom:10px;">
+        <div style="font-size:12px;color:#6B8B87;font-weight:bold;text-transform:uppercase;">N.º de Proforma</div>
+        <div style="font-size:18px;color:#0B3B45;font-weight:bold;margin-bottom:8px;">${String(datos.numero).padStart(3, '0')}</div>
+        ${bloqueCliente}
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;margin-top:8px;">
+        <thead>
+          <tr>
+            <th style="padding:8px 6px;text-align:left;font-size:12px;color:#0F5C63;border-bottom:2px solid #0F5C63;">Descripción</th>
+            <th style="padding:8px 6px;text-align:right;font-size:12px;color:#0F5C63;border-bottom:2px solid #0F5C63;">P. Unit.</th>
+            <th style="padding:8px 6px;text-align:center;font-size:12px;color:#0F5C63;border-bottom:2px solid #0F5C63;">Cant.</th>
+            <th style="padding:8px 6px;text-align:center;font-size:12px;color:#0F5C63;border-bottom:2px solid #0F5C63;">Unidad</th>
+            <th style="padding:8px 6px;text-align:right;font-size:12px;color:#0F5C63;border-bottom:2px solid #0F5C63;">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filas}
+          <tr>
+            <td colspan="4" style="padding:6px;font-size:13px;color:#0A2A2E;text-align:right;">Subtotal</td>
+            <td style="padding:6px;font-size:13px;color:#0A2A2E;text-align:right;">$${datos.subtotal.toFixed(2)}</td>
+          </tr>
+          ${filaDescuento}
+          ${filaIva}
+          <tr>
+            <td colspan="4" style="padding:10px 6px;font-size:15px;font-weight:bold;color:#0B3B45;text-align:right;">TOTAL</td>
+            <td style="padding:10px 6px;font-size:15px;font-weight:bold;color:#0B3B45;text-align:right;">$${datos.total.toFixed(2)}</td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+  }
+
+  btnEnviarCorreo.addEventListener('click', () => {
+    const datos = obtenerDatosProforma();
+    if (datos.items.length === 0) return;
+    datos.numero = generarNumeroProforma();
+
+    const emailInput = document.getElementById('emailCliente').value.trim();
+    if (!validarEmail(emailInput)){
+      avisoCorreo.textContent = 'Ingresa un correo válido para enviar la proforma.';
+      avisoCorreo.className = 'aviso-correo error';
+      return;
+    }
+    if (!window.emailjs){
+      avisoCorreo.textContent = 'No se pudo cargar el servicio de correo. Revisa tu conexión.';
+      avisoCorreo.className = 'aviso-correo error';
+      return;
+    }
+
+    avisoCorreo.textContent = 'Enviando correo...';
+    avisoCorreo.className = 'aviso-correo enviando';
+    btnEnviarCorreo.disabled = true;
+
+    const parametros = {
+      to_email: emailInput,
+      cliente_nombre: datos.nombre || 'Cliente',
+      total: `$${datos.total.toFixed(2)}`,
+      detalle_html: construirDetalleHtml(datos)
+    };
+
+    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, parametros)
+      .then(() => {
+        avisoCorreo.textContent = 'Correo enviado correctamente.';
+        avisoCorreo.className = 'aviso-correo exito';
+        guardarProformaHistorial('correo', datos);
+        btnEnviarCorreo.disabled = false;
+      })
+      .catch((err) => {
+        console.error('Error enviando correo', err);
+        avisoCorreo.textContent = 'No se pudo enviar el correo. Intenta de nuevo.';
+        avisoCorreo.className = 'aviso-correo error';
+        btnEnviarCorreo.disabled = false;
+      });
+  });
+
+  // ===== HISTORIAL =====
+  function cargarHistorial(){
+    try{
+      const guardado = localStorage.getItem(LS_KEY_HISTORIAL);
+      return guardado ? JSON.parse(guardado) : [];
+    } catch(e){
+      console.error('No se pudo cargar el historial', e);
+      return [];
+    }
+  }
+
+  function guardarProformaHistorial(canal, datosPrevios){
+    const datos = datosPrevios || obtenerDatosProforma();
+    if (datos.items.length === 0) return;
+
+    const historial = cargarHistorial();
+    historial.unshift({
+      id: Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+      numero: datos.numero || null,
+      fecha: datos.fecha.toISOString(),
+      nombre: datos.nombre,
+      empresa: datos.empresa,
+      telefono: datos.telefono,
+      email: datos.email,
+      items: datos.items.map(it => it.personalizado
+        ? { id: it.id, cantidad: it.cantidad, personalizado: true, nombre: it.nombre, precioUnit: it.precioUnit }
+        : { id: it.id, cantidad: it.cantidad }),
+      tipoDescuento: datos.tipoDescuento,
+      valorDescuentoInput: datos.valorDescuentoInput,
+      incluyeIva: datos.incluyeIva,
+      total: datos.total,
+      resumen: datos.items.map(it => `${it.nombre} x${it.cantidad}`).join(', '),
+      canal
+    });
+
+    // Máximo 200 registros para no saturar el almacenamiento del celular
+    const recortado = historial.slice(0, 200);
+    localStorage.setItem(LS_KEY_HISTORIAL, JSON.stringify(recortado));
+    renderHistorial();
+  }
+
+  function badgeCanal(canal){
+    if (canal === 'whatsapp') return '<span class="item-historial-canal canal-whatsapp">WhatsApp</span>';
+    if (canal === 'correo') return '<span class="item-historial-canal canal-correo">Correo</span>';
+    return '<span class="item-historial-canal canal-guardado">PDF descargado</span>';
+  }
+
+  function renderHistorial(filtro){
+    const lista = document.getElementById('listaHistorial');
+    let historial = cargarHistorial();
+
+    if (filtro && filtro.trim()){
+      const f = filtro.trim().toLowerCase();
+      historial = historial.filter(h =>
+        (h.nombre || '').toLowerCase().includes(f) ||
+        (h.empresa || '').toLowerCase().includes(f) ||
+        (h.telefono || '').includes(f) ||
+        (h.email || '').toLowerCase().includes(f) ||
+        (h.numero ? String(h.numero).padStart(3, '0').includes(f) : false)
+      );
+    }
+
+    if (historial.length === 0){
+      lista.innerHTML = '<div class="historial-vacio">No se encontraron proformas.</div>';
+      return;
+    }
+
+    lista.innerHTML = historial.map(h => `
+      <div class="item-historial" data-id="${h.id}">
+        <div class="item-historial-top">
+          <div>
+            <div class="item-historial-nombre">${h.numero ? `#${String(h.numero).padStart(3, '0')} · ` : ''}${h.empresa || h.nombre || 'Cliente sin nombre'}</div>
+            <div class="item-historial-fecha">${h.empresa && h.nombre ? `Atención: ${h.nombre} · ` : ''}${formatearFecha(h.fecha)}</div>
+          </div>
+          <div class="item-historial-total">$${h.total.toFixed(2)}</div>
+        </div>
+        <div class="item-historial-detalle">${h.resumen}</div>
+        <div>${badgeCanal(h.canal)}</div>
+      </div>
+    `).join('');
+
+    lista.querySelectorAll('.item-historial').forEach(el => {
+      el.addEventListener('click', () => {
+        const id = el.dataset.id;
+        const registro = cargarHistorial().find(h => h.id === id);
+        if (registro) cargarProformaDesdeHistorial(registro);
+      });
+    });
+  }
+
+  function cargarProformaDesdeHistorial(registro){
+    Object.keys(cantidades).forEach(id => cantidades[id] = 0);
+    itemsPersonalizados = [];
+    registro.items.forEach(it => {
+      if (it.personalizado){
+        itemsPersonalizados.push({
+          id: it.id, nombre: it.nombre, cantidad: it.cantidad, precioUnit: it.precioUnit
+        });
+      } else if (cantidades.hasOwnProperty(it.id)){
+        cantidades[it.id] = it.cantidad;
+      }
+    });
+    renderPersonalizados();
+    document.getElementById('nombreCliente').value = registro.nombre || '';
+    document.getElementById('telCliente').value = registro.telefono || '';
+    document.getElementById('emailCliente').value = registro.email || '';
+    document.getElementById('empresaCliente').value = registro.empresa || '';
+
+    tipoDescuento = registro.tipoDescuento || 'porcentaje';
+    if (tipoDescuento === 'fijo'){
+      btnFijo.classList.add('activo'); btnPorcentaje.classList.remove('activo');
+    } else {
+      btnPorcentaje.classList.add('activo'); btnFijo.classList.remove('activo');
+    }
+    descuentoValorInput.value = registro.valorDescuentoInput || '';
+    incluirIvaInput.checked = registro.incluyeIva !== false;
+
+    calcularTotal();
+    cerrarPanelHistorial();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  const overlayHistorial = document.getElementById('overlayHistorial');
+  function abrirPanelHistorial(){
+    renderHistorial(document.getElementById('buscarHistorial').value);
+    overlayHistorial.classList.add('visible');
+  }
+  function cerrarPanelHistorial(){
+    overlayHistorial.classList.remove('visible');
+  }
+
+  document.getElementById('btnHistorial').addEventListener('click', abrirPanelHistorial);
+  document.getElementById('btnCerrarHistorial').addEventListener('click', cerrarPanelHistorial);
+  overlayHistorial.addEventListener('click', (e) => {
+    if (e.target === overlayHistorial) cerrarPanelHistorial();
+  });
+  document.getElementById('buscarHistorial').addEventListener('input', (e) => {
+    renderHistorial(e.target.value);
+  });
+
+  // ===== CONFIGURACIÓN (número interno de este celular) =====
+  const overlayConfiguracion = document.getElementById('overlayConfiguracion');
+  const configNumeroNegocioInput = document.getElementById('configNumeroNegocio');
+  const avisoConfig = document.getElementById('avisoConfig');
+
+  function abrirPanelConfiguracion(){
+    configNumeroNegocioInput.value = obtenerNumeroNegocioLocal();
+    avisoConfig.textContent = '';
+    overlayConfiguracion.classList.add('visible');
+  }
+  function cerrarPanelConfiguracion(){
+    overlayConfiguracion.classList.remove('visible');
+  }
+
+  document.getElementById('btnConfiguracion').addEventListener('click', abrirPanelConfiguracion);
+  document.getElementById('btnCerrarConfiguracion').addEventListener('click', cerrarPanelConfiguracion);
+  overlayConfiguracion.addEventListener('click', (e) => {
+    if (e.target === overlayConfiguracion) cerrarPanelConfiguracion();
+  });
+
+  document.getElementById('btnGuardarConfiguracion').addEventListener('click', () => {
+    const valor = configNumeroNegocioInput.value.trim();
+    if (valor.length !== 10 || !valor.startsWith('0') || !/^\d+$/.test(valor)){
+      avisoConfig.textContent = 'Ingresa un número válido de 10 dígitos, iniciando con 0.';
+      avisoConfig.style.color = 'var(--coral)';
+      return;
+    }
+    localStorage.setItem(LS_KEY_NUMERO_NEGOCIO, valor);
+    avisoConfig.textContent = 'Número guardado en este celular.';
+    avisoConfig.style.color = 'var(--teal)';
+  });
+
+  refrescarTextosPrecios();
+  calcularTotal();
+
+  if ('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js').catch((err) => {
+        console.log('No se pudo registrar el service worker', err);
+      });
+    });
+
+    // Si se detecta una versión nueva de la app, recarga automáticamente
+    // para que siempre se vea la última versión sin pasos manuales.
+    let yaRecargo = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (yaRecargo) return;
+      yaRecargo = true;
+      window.location.reload();
+    });
+  }
+
+  let eventoInstalacion = null;
+  const bannerInstalar = document.getElementById('bannerInstalar');
+  const btnInstalar = document.getElementById('btnInstalar');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    eventoInstalacion = e;
+    bannerInstalar.classList.add('visible');
+  });
+
+  btnInstalar.addEventListener('click', async () => {
+    if (!eventoInstalacion) return;
+    eventoInstalacion.prompt();
+    await eventoInstalacion.userChoice;
+    eventoInstalacion = null;
+    bannerInstalar.classList.remove('visible');
+  });
+
+  window.addEventListener('appinstalled', () => {
+    bannerInstalar.classList.remove('visible');
+  });
+</script>
+
+</body>
+</html>
